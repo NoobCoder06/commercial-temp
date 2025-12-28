@@ -1,0 +1,19 @@
+#%RAML 1.0 Library
+
+types:
+  Employee:
+    type: object
+    properties:
+      id: integer
+      firstName: string
+      lastName: string
+      email: string
+      position: string
+      
+  EmployeeUpdate:
+    type: object
+    properties:
+      firstName?: string
+      lastName?: string
+      email?: string
+      position?: string

@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd 
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
+	<sub-flow name="update-sub-flow" doc:id="6d768546-7063-41cc-ba20-511b1cf2695e">
+		<ee:transform doc:name="Update Query">
+            <ee:variables>
+                <ee:set-variable variableName="updateQuery"><![CDATA[%dw 2.0
+output application/java
+---
+"update emp_schema.emp_master set " ++ ([(if (payload.firstName?) "fname = :firstName" else null), (if (payload.lastName?) "lname = :lastName" else null), (if (payload.email?) "email_id = :email" else null), (if (payload.position?)"position = :position" else null) ] filter($ != null) joinBy ", ") ++ " where emp_id = " ++ attributes.uriParams.id]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <db:update doc:name="Update" doc:id="f3e4e735-4ede-4335-b3c7-51148110b4f0" config-ref="Database_Config">
+            <db:sql><![CDATA[#[vars.updateQuery]]]></db:sql>
+			<db:input-parameters ><![CDATA[#[payload]]]></db:input-parameters>
+        </db:update>
+        <ee:transform doc:name="Transform Message">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+  message: "Employee details updated"
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+	</sub-flow>
+	<sub-flow name="post-sub-flow" doc:id="0c1aa6ee-bef7-4296-9563-45b35afddecb">
+		<ee:transform doc:name="Transform Message" doc:id="2c1c6236-570d-4f99-ac79-08d43cf1dcb8">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"id": payload.id,
+	"firstName": payload.firstName,
+	"lastName": payload.lastName,
+	"email": payload.email,
+	"position": payload.position
+}]]></ee:set-payload>
+            </ee:message>
+            <ee:variables />
+        </ee:transform>
+        <db:insert doc:name="Insert" doc:id="e0ec18e8-e424-4a7c-8aff-ac592954e6de" config-ref="Database_Config">
+            <db:sql><![CDATA[insert into emp_schema.emp_master (emp_id, fname, lname, email_id, position) 
+values(:id,:firstName,:lastName,:email,:position)]]></db:sql>
+            <db:input-parameters><![CDATA[#[payload]]]></db:input-parameters>
+        </db:insert>
+        <ee:transform doc:name="Transform Message">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+  message: "Employee record created"
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+	</sub-flow>
+	<sub-flow name="get-sub-flow" doc:id="f64fa247-f4ac-4927-86b9-ab572a8b50be">
+		<ee:transform doc:name="Fetch Query">
+            <ee:variables>
+                <ee:set-variable variableName="id">attributes.uriParams.'id'</ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <db:select doc:name="Select" doc:id="6d0b5025-03d7-4fb9-8fca-68fcaafb9d6d" config-ref="Database_Config">
+            <db:sql><![CDATA[select * from emp_schema.emp_master where emp_id = :id]]></db:sql>
+            <db:input-parameters><![CDATA[#[{
+	"id": attributes.uriParams.id
+}]]]></db:input-parameters>
+        </db:select>
+        <ee:transform doc:name="Transform Message">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+	</sub-flow>
+	<sub-flow name="delete-sub-flow" doc:id="d4f144cd-9b96-4a10-9aca-8c884eaace92">
+		<ee:transform doc:name="Delete Query" doc:id="ea2cdfb8-e234-4c4b-bba2-5dc0ab3a0d35">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"id": vars.employeeId
+}]]></ee:set-payload>
+            </ee:message>
+            <ee:variables />
+        </ee:transform>
+        <db:delete doc:name="Delete" doc:id="fcab0fd8-4045-4f1a-b3bc-6c67b80f2db0" config-ref="Database_Config">
+            <db:sql><![CDATA[delete from emp_schema.emp_master where emp_id = :id]]></db:sql>
+            <db:input-parameters><![CDATA[#[{
+	"id": attributes.uriParams.id
+}]]]></db:input-parameters>
+        </db:delete>
+        <ee:transform doc:name="Transform Message">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+  message: "Employee record deleted"
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+	</sub-flow>
+</mule>
